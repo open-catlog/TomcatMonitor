@@ -1,4 +1,5 @@
 package main;
+import java.util.Formatter;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Timer;
@@ -38,7 +39,7 @@ public class TomcatMonitor {
 			ExecutorService fixedThreadPool = Executors.newFixedThreadPool(cpuCount + 1);
 			
 			MongoCollection<Document> tomcats = DBManager.getDBCollection(mongodb, dbPort, "tomcats");
-			MongoCollection<Document> tomcatSessions = DBManager.getDBCollection(mongodb, dbPort, "tomcatSessions");
+			MongoCollection<Document> tomcatSessions = DBManager.getDBCollection(mongodb, dbPort, "tomcatsessions");
 
 			Timer timer = new Timer();
 			timer.schedule(new TimerTask() {
@@ -68,7 +69,7 @@ public class TomcatMonitor {
 										gcInfo.get("collectionCount"), 
 										gcInfo.get("collectionTime"),
 										timeSpanInfo.get("startTime"), 
-										timeSpanInfo.get("uptime"));
+										formatTimespan(timeSpanInfo.get("uptime")));
 								DBManager.insert(tomcats, tomcatModel);
 								
 								if (sessionsInfo != null && !sessionsInfo.isEmpty()) {
@@ -92,4 +93,17 @@ public class TomcatMonitor {
 		}
 	}
 
+	private static String formatTimespan(long span) {
+		long minseconds = span % 1000;  
+        span = span / 1000;  
+        long seconds = span % 60;  
+        span = span / 60;  
+        long mins = span % 60;  
+        span = span / 60;  
+        long hours = span % 24;  
+        span = span / 24;  
+        long days = span;  
+        return (new Formatter()).format("%1$d天 %2$02d:%3$02d:%4$02d.%5$03d",  
+                days, hours, mins, seconds, minseconds).toString(); 
+	}
 }

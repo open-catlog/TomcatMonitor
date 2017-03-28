@@ -1,5 +1,7 @@
 package model;
 
+import java.util.Date;
+
 public class TomcatSessionModel extends BaseModel {
 
 	// sessions
@@ -12,7 +14,7 @@ public class TomcatSessionModel extends BaseModel {
 	private long 	 sessionCounter;
 	
 	public TomcatSessionModel(String server, String context, long maxActiveSessions, long activeSessions, long sessionCounter) {
-		super(server, System.currentTimeMillis());
+		super(server, new Date());
 		this.context = context;
 		this.maxActiveSessions = maxActiveSessions;
 		this.activeSessions = activeSessions;

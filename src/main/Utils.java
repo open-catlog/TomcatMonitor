@@ -27,9 +27,11 @@ public class Utils {
 	public static String[] getFiledName(Object object) {
 		try {
 			Field[] fields = object.getClass().getDeclaredFields();
-			String[] fieldNames = new String[fields.length];
-			for (int i = 0; i < fields.length; i++) {
-				fieldNames[i] = fields[i].getName();
+			Field[] superFields = object.getClass().getSuperclass().getDeclaredFields();
+			String[] fieldNames = new String[fields.length + superFields.length];
+			for (int i = 0; i < fieldNames.length; i++) {
+				fieldNames[i] = i < fields.length ? fields[i].getName() : 
+					superFields[i - fields.length].getName();
 			}
 			return fieldNames;
 		} catch (SecurityException e) {
