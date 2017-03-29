@@ -103,7 +103,7 @@ public class TomcatMonitor {
         long hours = span % 24;  
         span = span / 24;  
         long days = span;  
-        return (new Formatter()).format("%1$d天 %2$02d:%3$02d:%4$02d.%5$03d",  
-                days, hours, mins, seconds, minseconds).toString(); 
+        return (new Formatter()).format("%1$d天 %2$02d小时%3$02d分%4$02d秒",  
+                days, hours, mins, seconds).toString(); 
 	}
 }
