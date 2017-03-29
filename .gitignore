@@ -7,3 +7,5 @@ bin/
 *.sw*
 *.un~
 *.idea/
+nohup.out
+src/sources.list

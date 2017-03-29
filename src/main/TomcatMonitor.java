@@ -1,4 +1,5 @@
 package main;
+import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.Map;
 import java.util.Properties;
@@ -34,10 +35,18 @@ public class TomcatMonitor {
 			String[] sessionsIgnore = props.getProperty("sessionsIgnore").split(",");
 			String mongodb = props.getProperty("mongdb");
 			int dbPort = Integer.parseInt(props.getProperty("dbPort"));
+
+			//建立连接
+			ArrayList<MBeanServerConnection> mbscs = new ArrayList<MBeanServerConnection>();
+			for (int j = 0; j < ips.length; j++) {
+				MBeanServerConnection mbsc = JMXManager.createMBeanServer(ips[j], ports[j]);
+				mbscs.add(mbsc);
+			}
+
 			//获取cpu的个数
 			int cpuCount = Runtime.getRuntime().availableProcessors();
 			ExecutorService fixedThreadPool = Executors.newFixedThreadPool(cpuCount + 1);
-			
+
 			MongoCollection<Document> tomcats = DBManager.getDBCollection(mongodb, dbPort, "tomcats");
 			MongoCollection<Document> tomcatSessions = DBManager.getDBCollection(mongodb, dbPort, "tomcatsessions");
 
@@ -50,16 +59,14 @@ public class TomcatMonitor {
 						final int index = i;
 						fixedThreadPool.execute(new Runnable() {
 							public void run() {
-								// 建立连接
-								MBeanServerConnection mbsc = JMXManager.createMBeanServer(ips[index], ports[index]);
 								// ThreadPool
-								Map<String, Integer> threadPoolInfo = JMXManager.getThreadPoolInfo(mbsc, threadPools[index]);
+								Map<String, Integer> threadPoolInfo = JMXManager.getThreadPoolInfo(mbscs.get(index), threadPools[index]);
 								// GarbageCollector
-								Map<String, Long> gcInfo = JMXManager.getGarbageCollectionInfo(mbsc, garbageCollector);
+								Map<String, Long> gcInfo = JMXManager.getGarbageCollectionInfo(mbscs.get(index), garbageCollector);
 								// Runtime
-								Map<String, Long> timeSpanInfo = JMXManager.getTimeSpanInfo(mbsc);
+								Map<String, Long> timeSpanInfo = JMXManager.getTimeSpanInfo(mbscs.get(index));
 								// Session
-								Map<String, Map<String, String>> sessionsInfo = JMXManager.getSessionInfo(mbsc, sessionsIgnore);
+								Map<String, Map<String, String>> sessionsInfo = JMXManager.getSessionInfo(mbscs.get(index), sessionsIgnore);
 
 								TomcatModel tomcatModel = new TomcatModel(
 										ips[index],
