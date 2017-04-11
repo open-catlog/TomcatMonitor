@@ -1,12 +1,15 @@
 package main;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Formatter;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import javax.management.MBeanServerConnection;
+import javax.management.remote.JMXConnector;
 
 import org.bson.Document;
 
@@ -36,13 +39,6 @@ public class TomcatMonitor {
 			String mongodb = props.getProperty("mongdb");
 			int dbPort = Integer.parseInt(props.getProperty("dbPort"));
 
-			//建立连接
-			ArrayList<MBeanServerConnection> mbscs = new ArrayList<MBeanServerConnection>();
-			for (int j = 0; j < ips.length; j++) {
-				MBeanServerConnection mbsc = JMXManager.createMBeanServer(ips[j], ports[j]);
-				mbscs.add(mbsc);
-			}
-
 			//获取cpu的个数
 			int cpuCount = Runtime.getRuntime().availableProcessors();
 			ExecutorService fixedThreadPool = Executors.newFixedThreadPool(cpuCount + 1);
@@ -50,12 +46,24 @@ public class TomcatMonitor {
 			MongoCollection<Document> tomcats = DBManager.getDBCollection(mongodb, dbPort, "tomcats");
 			MongoCollection<Document> tomcatSessions = DBManager.getDBCollection(mongodb, dbPort, "tomcatsessions");
 
-			Timer timer = new Timer();
-			timer.schedule(new TimerTask() {
+			Timer businessTimer = new Timer();
+			businessTimer.schedule(new TimerTask() {
 
 				@Override
 				public void run() {
+					List<MBeanServerConnection> mbscs = new ArrayList<MBeanServerConnection>();
+					List<JMXConnector> connectors = new ArrayList<JMXConnector>();
+
 					for (int i = 0; i < ips.length; i++) {
+						//建立连接
+						try {
+							JMXConnector connector = JMXManager.createConnection(ips[i], ports[i]);
+							connectors.add(connector);
+							MBeanServerConnection mbsc = connector.getMBeanServerConnection();
+							mbscs.add(mbsc);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
 						final int index = i;
 						fixedThreadPool.execute(new Runnable() {
 							public void run() {
@@ -88,12 +96,19 @@ public class TomcatMonitor {
 										DBManager.insert(tomcatSessions, tomcatSessionModel);
 									}
 								}
+								//关闭连接
+								try {
+									JMXConnector connector = connectors.get(index);
+									connector.close();
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
 							}
 						});
 					}
 				}
 				
-			}, 0, 3000);
+			}, 0, 60 * 1000);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -101,7 +116,6 @@ public class TomcatMonitor {
 	}
 
 	private static String formatTimespan(long span) {
-		long minseconds = span % 1000;  
         span = span / 1000;  
         long seconds = span % 60;  
         span = span / 60;  

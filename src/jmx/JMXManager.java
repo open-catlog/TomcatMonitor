@@ -18,13 +18,12 @@ public class JMXManager {
 	 * @param port
 	 * @return
 	 */
-	public static MBeanServerConnection createMBeanServer(String ip, String port) {
+	public static JMXConnector createConnection(String ip, String port) {
 		try {
 			String jmxURL = "service:jmx:rmi:///jndi/rmi://" + ip + ":" + port + "/jmxrmi";
 			JMXServiceURL serviceURL = new JMXServiceURL(jmxURL);
 			JMXConnector connector = JMXConnectorFactory.connect(serviceURL);
-			MBeanServerConnection mbsc = connector.getMBeanServerConnection();
-			return mbsc;
+			return connector;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
