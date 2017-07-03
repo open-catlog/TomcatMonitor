@@ -61,50 +61,55 @@ public class TomcatMonitor {
 							connectors.add(connector);
 							MBeanServerConnection mbsc = connector.getMBeanServerConnection();
 							mbscs.add(mbsc);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-						final int index = i;
-						fixedThreadPool.execute(new Runnable() {
-							public void run() {
-								// ThreadPool
-								Map<String, Integer> threadPoolInfo = JMXManager.getThreadPoolInfo(mbscs.get(index), threadPools[index]);
-								// GarbageCollector
-								Map<String, Long> gcInfo = JMXManager.getGarbageCollectionInfo(mbscs.get(index), garbageCollector);
-								// Runtime
-								Map<String, Long> timeSpanInfo = JMXManager.getTimeSpanInfo(mbscs.get(index));
-								// Session
-								Map<String, Map<String, String>> sessionsInfo = JMXManager.getSessionInfo(mbscs.get(index), sessionsIgnore);
+							final int index = i;
+							fixedThreadPool.execute(new Runnable() {
+								public void run() {
+									// ThreadPool
+									Map<String, Integer> threadPoolInfo = JMXManager.getThreadPoolInfo(mbscs.get(index), threadPools[index]);
+									// GarbageCollector
+									Map<String, Long> gcInfo = JMXManager.getGarbageCollectionInfo(mbscs.get(index), garbageCollector);
+									// Runtime
+									Map<String, Long> timeSpanInfo = JMXManager.getTimeSpanInfo(mbscs.get(index));
+									// Session
+									Map<String, Map<String, String>> sessionsInfo = JMXManager.getSessionInfo(mbscs.get(index), sessionsIgnore);
 
-								TomcatModel tomcatModel = new TomcatModel(
-										ips[index],
-										threadPoolInfo.get("maxThreads"),
-										threadPoolInfo.get("currentThreadCount"), 
-										threadPoolInfo.get("currentThreadsBusy"),
-										gcInfo.get("collectionCount"), 
-										gcInfo.get("collectionTime"),
-										timeSpanInfo.get("startTime"), 
-										formatTimespan(timeSpanInfo.get("uptime")));
-								DBManager.insert(tomcats, tomcatModel);
-								
-								if (sessionsInfo != null && !sessionsInfo.isEmpty()) {
-									for(Map.Entry<String, Map<String, String>> sessionInfo: sessionsInfo.entrySet()) {
-										Map<String, String> sessions = sessionInfo.getValue();
-										TomcatSessionModel tomcatSessionModel = new TomcatSessionModel(
-												ips[index], sessionInfo.getKey(), Integer.parseInt(sessions.get("maxActiveSessions")),
-												Integer.parseInt(sessions.get("activeSessions")), Long.parseLong(sessions.get("sessionCounter")));
-										DBManager.insert(tomcatSessions, tomcatSessionModel);
+									TomcatModel tomcatModel = new TomcatModel(
+											ips[index],
+											threadPoolInfo.get("maxThreads"),
+											threadPoolInfo.get("currentThreadCount"),
+											threadPoolInfo.get("currentThreadsBusy"),
+											gcInfo.get("collectionCount"),
+											gcInfo.get("collectionTime"),
+											timeSpanInfo.get("startTime"),
+											formatTimespan(timeSpanInfo.get("uptime")));
+									DBManager.insert(tomcats, tomcatModel);
+
+									if (sessionsInfo != null && !sessionsInfo.isEmpty()) {
+										for(Map.Entry<String, Map<String, String>> sessionInfo: sessionsInfo.entrySet()) {
+											Map<String, String> sessions = sessionInfo.getValue();
+											TomcatSessionModel tomcatSessionModel = new TomcatSessionModel(
+													ips[index], sessionInfo.getKey(), Integer.parseInt(sessions.get("maxActiveSessions")),
+													Integer.parseInt(sessions.get("activeSessions")), Long.parseLong(sessions.get("sessionCounter")));
+											DBManager.insert(tomcatSessions, tomcatSessionModel);
+										}
+									}
+									//关闭连接
+									try {
+										JMXConnector connector = connectors.get(index);
+										connector.close();
+									} catch (IOException e) {
+										System.out.println("IO Exception~");
+//										e.printStackTrace();
 									}
 								}
-								//关闭连接
-								try {
-									JMXConnector connector = connectors.get(index);
-									connector.close();
-								} catch (IOException e) {
-									e.printStackTrace();
-								}
-							}
-						});
+							});
+						} catch (IOException e) {
+							System.out.println("IO Exception~");
+//							e.printStackTrace();
+						} catch (Exception e) {
+							System.out.println("Tomcat down for a while~");
+//							e.printStackTrace();
+						}
 					}
 				}
 				
